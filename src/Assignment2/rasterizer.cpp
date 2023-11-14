@@ -9,7 +9,7 @@
 #include <opencv2/opencv.hpp>
 #include <math.h>
 
-
+static std::tuple<float, float, float> computeBarycentric2D(float x, float y, const Vector3f* v);
 rst::pos_buf_id rst::rasterizer::load_positions(const std::vector<Eigen::Vector3f> &positions)
 {
     auto id = get_next_id();
@@ -22,7 +22,7 @@ rst::ind_buf_id rst::rasterizer::load_indices(const std::vector<Eigen::Vector3i>
 {
     auto id = get_next_id();
     ind_buf.emplace(id, indices);
-
+    std::cout << "ind_buf_id" << id << '\n';
     return {id};
 }
 
@@ -39,10 +39,21 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
     return Vector4f(v3.x(), v3.y(), v3.z(), w);
 }
 
-
+//可以叉乘或者判断点的中心坐标来判断
 static bool insideTriangle(int x, int y, const Vector3f* _v)
 {   
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
+    Vector3f v[3];
+    for(int i=0;i<3;i++)
+        v[i] = {_v[i].x(),_v[i].y(), 1.0};
+    Vector3f f0,f1,f2;
+    f0 = v[1].cross(v[0]);
+    f1 = v[2].cross(v[1]);
+    f2 = v[0].cross(v[2]);
+    Vector3f p(x,y,1.);
+    if((p.dot(f0)*f0.dot(v[2])>0) && (p.dot(f1)*f1.dot(v[0])>0) && (p.dot(f2)*f2.dot(v[1])>0))
+        return true;
+    return false;
 }
 
 static std::tuple<float, float, float> computeBarycentric2D(float x, float y, const Vector3f* v)
@@ -101,11 +112,46 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
         rasterize_triangle(t);
     }
 }
-
+// int once = 0;
 //Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     auto v = t.toVector4();
-    
+    const int NEG_INF = -1e9;
+    const int POS_INF = 1e9;
+    int box_l=POS_INF,box_r=NEG_INF,box_t=NEG_INF,box_b=POS_INF;
+    for(auto& vec : v){
+        box_l = std::min(box_l,int(std::floor(vec.x())));
+        box_b = std::min(box_b,int(std::floor(vec.y())));
+        box_r = std::max(box_r,int(std::ceil(vec.x())));
+        box_t = std::max(box_t,int(std::ceil(vec.y())));
+        // if(once==0){
+        //     std::cout << vec << std::endl;
+        // }
+    }
+    // if(once==0){
+    //     std::cout << "box_w:" <<box_l<< " " <<box_r << std::endl;
+    //     std::cout << "box_H:" <<box_b<< " " <<box_t << std::endl;
+    //     std::cout << t.color[0] << std::endl;
+
+    // }
+    //     once =1;
+    for(int i=box_b;i<=box_t;++i){
+        for(int j=box_l;j<=box_r;++j){
+            if(insideTriangle(j+0.5,i+0.5,t.v)){
+                auto [alpha, beta, gamma] = computeBarycentric2D(j, i, t.v);//计算二维重心坐标
+                float w_reciprocal = 1.0/(alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                float z_interpolated = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
+                z_interpolated *= w_reciprocal;
+                Eigen::Vector3f pixel = {float(j),float(i),z_interpolated};
+                Eigen::Vector3f color = t.color[0]*alpha*255.+t.color[1]*beta*255.+t.color[2]*gamma*255.;
+                auto ind = (height-1-pixel.y())*width + pixel.x();
+                if(z_interpolated < depth_buf[ind]){
+                    set_pixel(pixel,color);
+                    depth_buf[ind] = z_interpolated;
+                }
+            }
+        }
+    }
     // TODO : Find out the bounding box of current triangle.
     // iterate through the pixel and find if the current pixel is inside the triangle
 

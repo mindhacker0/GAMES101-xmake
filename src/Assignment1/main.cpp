@@ -22,7 +22,11 @@ Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 Eigen::Matrix4f get_model_matrix(float rotation_angle)
 {
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
-
+    Eigen::Matrix4f translate;
+    float rad = MY_PI*rotation_angle/180.0;
+    translate << std::cos(rad),-std::sin(rad),0,0,std::sin(rad),std::cos(rad),0,0,0,0,1,0,0,0,0,1;
+    // std::cout << translate << std::endl;
+    model = translate * model;
     // TODO: Implement this function
     // Create the model matrix for rotating the triangle around the Z axis.
     // Then return it.
@@ -34,13 +38,18 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
                                       float zNear, float zFar)
 {
     // Students will implement this function
-
+    Eigen::Matrix4f perspective;
     Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
-
+    perspective << -zNear,0,0,0,0,-zNear,0,0,0,0,-zNear-zFar,-zNear*zFar,0,0,1,0;
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
-
+    Eigen::Matrix4f othographic;
+    othographic << 1.0/(aspect_ratio*zNear*std::tan(eye_fov/2)),0,0,0,0,1.0/(zNear*std::tan(eye_fov/2)),0,0,0,0,2/(zNear-zFar),-(zNear+zFar)/zNear-zFar,0,0,0,1;
+    // std::cout << othographic << std::endl;
+    // std::cout << perspective << std::endl;
+    projection = perspective*projection;
+    projection = othographic*projection;
     return projection;
 }
 
@@ -59,11 +68,11 @@ int main(int argc, const char** argv)
         else
             return 0;
     }
-
+    //长宽700的画布
     rst::rasterizer r(700, 700);
-
+    //视点坐标
     Eigen::Vector3f eye_pos = {0, 0, 5};
-
+    //定义一个三角形
     std::vector<Eigen::Vector3f> pos{{2, 0, -2}, {0, 2, -2}, {-2, 0, -2}};
 
     std::vector<Eigen::Vector3i> ind{{0, 1, 2}};

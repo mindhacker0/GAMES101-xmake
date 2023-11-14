@@ -50,7 +50,14 @@ Eigen::Matrix4f get_model_matrix(float angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Use the same projection matrix from the previous assignments
-
+    Eigen::Matrix4f perspective;
+    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
+    perspective << -zNear,0,0,0,0,-zNear,0,0,0,0,-zNear-zFar,-zNear*zFar,0,0,1,0;
+    Eigen::Matrix4f othographic;
+    othographic << 1.0/(aspect_ratio*zNear*std::tan(eye_fov/2)),0,0,0,0,1.0/(zNear*std::tan(eye_fov/2)),0,0,0,0,2/(zNear-zFar),-(zNear+zFar)/zNear-zFar,0,0,0,1;
+    projection = perspective*projection;
+    projection = othographic*projection;
+    return projection;
 }
 
 Eigen::Vector3f vertex_shader(const vertex_shader_payload& payload)
@@ -142,7 +149,7 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-        
+        //result_color+=color*kd
     }
 
     return result_color * 255.f;

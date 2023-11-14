@@ -2,12 +2,13 @@
 #include<eigen3/Eigen/Core>
 #include<eigen3/Eigen/Dense>
 #include<iostream>
-
+const double PI = std::acos(-1.0);
 int main(){
 
     // Basic Example of cpp
     std::cout << "Example of cpp \n";
     float a = 1.0, b = 2.0;
+    std::cout << 0.1 + 0.3 << std::endl;
     std::cout << a << std::endl;
     std::cout << a/b << std::endl;
     std::cout << std::sqrt(b) << std::endl;
@@ -21,7 +22,7 @@ int main(){
     Eigen::Vector3f w(1.0f,0.0f,0.0f);
     // vector output
     std::cout << "Example of output \n";
-    std::cout << v << std::endl;
+    std::cout << w << std::endl;
     // vector add
     std::cout << "Example of add \n";
     std::cout << v + w << std::endl;
@@ -43,6 +44,10 @@ int main(){
     // matrix scalar multiply i * 2.0
     // matrix multiply i * j
     // matrix multiply vector i * v
-
+    Eigen::Vector3f vec3(2.0f,1.0f,1.0f);
+    Eigen::Matrix3f trans;
+    trans << std::cos(45.0/180.0*PI), -std::sin(45.0/180.0*PI), 1.0, std::sin(45.0/180.0*PI), std::cos(45.0/180.0*PI), 2.0, 0.0, 0.0, 1.0;
+    std::cout << trans << std::endl;
+    std::cout << trans*vec3 << std::endl;
     return 0;
 }

@@ -25,14 +25,23 @@ Eigen::Matrix4f get_view_matrix(Eigen::Vector3f eye_pos)
 Eigen::Matrix4f get_model_matrix(float rotation_angle)
 {
     Eigen::Matrix4f model = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f translate;
+    float rad = MY_PI*rotation_angle/180.0;
+    translate << std::cos(rad),-std::sin(rad),0,0,std::sin(rad),std::cos(rad),0,0,0,0,1,0,0,0,0,1;
+    model = translate * model;
     return model;
 }
 
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Copy-paste your implementation from the previous assignment.
-    Eigen::Matrix4f projection;
-
+    Eigen::Matrix4f perspective;
+    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
+    perspective << -zNear,0,0,0,0,-zNear,0,0,0,0,-zNear-zFar,-zNear*zFar,0,0,1,0;
+    Eigen::Matrix4f othographic;
+    othographic << 1.0/(aspect_ratio*zNear*std::tan(eye_fov/2)),0,0,0,0,1.0/(zNear*std::tan(eye_fov/2)),0,0,0,0,2/(zNear-zFar),-(zNear+zFar)/zNear-zFar,0,0,0,1;
+    projection = perspective*projection;
+    projection = othographic*projection;
     return projection;
 }
 
@@ -119,8 +128,7 @@ int main(int argc, const char** argv)
         cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
         cv::imshow("image", image);
         key = cv::waitKey(10);
-
-        std::cout << "frame count: " << frame_count++ << '\n';
+        // std::cout << "frame count: " << frame_count++ << '\n';
     }
 
     return 0;
