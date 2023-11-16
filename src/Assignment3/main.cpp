@@ -91,7 +91,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     if (payload.texture)
     {
         // TODO: Get the texture value at the texture coordinates of the current fragment
-        // return_color = payload.texture->getColor(payload.tex_coords.x(),payload.tex_coords.y());;
+        return_color = payload.texture->getColor(std::abs(std::min(payload.tex_coords.x(),1.f)),std::abs(std::min(payload.tex_coords.y(),1.f)));;
     }
     Eigen::Vector3f texture_color;
     texture_color << return_color.x(), return_color.y(), return_color.z();
@@ -114,18 +114,18 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f normal = payload.normal;
 
     Eigen::Vector3f result_color = {0, 0, 0};
- //   Eigen::Vector3f view_dir = (eye_pos - point).normalized();//光线入眼的单位向量
+    Eigen::Vector3f view_dir = (eye_pos - point).normalized();//光线入眼的单位向量
     for (auto& light : lights)
     {
         // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
         // components are. Then, accumulate that result on the *result_color* object.
-        //Eigen::Vector3f light_dir = light.position - point;//光照到平面的向量
-        // float r = light_dir.norm();//光源到平面的距离
-        // auto light_ident = light_dir.normalized();//光照的单位向量
-        // auto h = (view_dir+light_ident).normalized();//半程向量
-        // result_color+=ka.cwiseProduct(amb_light_intensity);//环境光
-        // result_color+=kd.cwiseProduct(light.intensity/(r*r))*std::max(0.f,float(normal.dot(light_ident)));//漫反射
-        // result_color+=ks.cwiseProduct(light.intensity/(r*r))*std::pow(std::max(0.f,float(normal.dot(h))),p);//镜面反射
+        Eigen::Vector3f light_dir = light.position - point;//光照到平面的向量
+        float r = light_dir.norm();//光源到平面的距离
+        auto light_ident = light_dir.normalized();//光照的单位向量
+        auto h = (view_dir+light_ident).normalized();//半程向量
+        result_color+=ka.cwiseProduct(amb_light_intensity);//环境光
+        result_color+=kd.cwiseProduct(light.intensity/(r*r))*std::max(0.f,float(normal.dot(light_ident)));//漫反射
+        result_color+=ks.cwiseProduct(light.intensity/(r*r))*std::pow(std::max(0.f,float(normal.dot(h))),p);//镜面反射
     }
 
     return result_color * 255.f;
@@ -164,7 +164,7 @@ Eigen::Vector3f phong_fragment_shader(const fragment_shader_payload& payload)
         result_color+=kd.cwiseProduct(light.intensity/(r*r))*std::max(0.f,float(normal.dot(light_ident)));//漫反射
         result_color+=ks.cwiseProduct(light.intensity/(r*r))*std::pow(std::max(0.f,float(normal.dot(h))),p);//镜面反射
     }
-    //std::cout << result_color << std::endl;
+
     return result_color * 255.f;
 }
 
@@ -268,9 +268,9 @@ int main(int argc, const char** argv)
     std::string filename = "output.png";
     objl::Loader Loader;
     std::string obj_path = "../../models/spot/";
-
+    std::string path_prefix = "D:\\project\\GAMES101-xmake\\models\\spot\\";
     // Load .obj File
-    bool loadout = Loader.LoadFile("../../models/spot/spot_triangulated_good.obj");
+    bool loadout = Loader.LoadFile(obj_path + "spot_triangulated_good.obj");
     for(auto mesh:Loader.LoadedMeshes)
     {
         for(int i=0;i<mesh.Vertices.size();i+=3)
@@ -288,10 +288,10 @@ int main(int argc, const char** argv)
 
     rst::rasterizer r(700, 700);
 
-    auto texture_path = "hmap.jpg";
+    auto texture_path = "spot_texture.png";
     r.set_texture(Texture(obj_path + texture_path));
 
-    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = phong_fragment_shader;
+    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = texture_fragment_shader;
 
     if (argc >= 2)
     {

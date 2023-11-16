@@ -275,26 +275,39 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
         box_r = std::max(box_r,int(std::ceil(vec.x())));
         box_t = std::max(box_t,int(std::ceil(vec.y())));
     }
+    int dir[4][2]= {{0,0},{0,1},{0,1},{1,1}};
     for(int i=box_b;i<=box_t;++i){
         for(int j=box_l;j<=box_r;++j){
+            float intense = 0;
+            for(int k=0;k<4;++k){
+                int dx = j+dir[k][0];
+                int dy = i+dir[k][1];
+                if(dx<box_l || dx>box_r || dy<box_b || dy>box_t){continue;} 
+                if(insideTriangle(dx,dy,t.v)){ intense+=.25;}
+            }
             if(insideTriangle(j,i,t.v)){
+            //if(intense>0)
                 auto [alpha, beta, gamma] = computeBarycentric2D(j+0.5, i+0.5, t.v);//计算二维重心坐标
                 float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
-                float zp = alpha * v[0].z() / v[0].w() + beta * v[1].z() / v[1].w() + gamma * v[2].z() / v[2].w();
-                zp *= Z;
+                auto interpolateFn = [=,&v](auto av,auto bv,auto cv){//通用属性插值函数
+                    return Z*(alpha*av/v[0].w()+beta*bv/v[1].w()+gamma*cv/v[2].w());
+                };
+                float zp = interpolateFn(v[0].z(),v[1].z(),v[2].z());//深度插值
                 auto ind = get_index(j,i);//  (height-1-pixel.y())*width + pixel.x();
                 if(zp < depth_buf[ind]){
                     // TODO: Interpolate the attributes:
-                    auto interpolated_color = t.color[0]*alpha + t.color[1]*beta + t.color[2]*gamma;
-                    auto interpolated_normal = t.normal[0]*alpha + t.normal[1]*beta + t.normal[2]*gamma;
-                    auto interpolated_texcoords = t.tex_coords[0]*alpha + t.tex_coords[1]*beta + t.tex_coords[2]*gamma;
-                    auto interpolated_shadingcoords = view_pos[0]*alpha + view_pos[1]*beta + view_pos[2]*gamma;
+                    Eigen::Vector3f interpolated_color = interpolateFn(t.color[0],t.color[1],t.color[2]);
+                    Eigen::Vector3f interpolated_normal = interpolateFn(t.normal[0],t.normal[1],t.normal[2]);
+                    Eigen::Vector2f interpolated_texcoords = interpolateFn(t.tex_coords[0],t.tex_coords[1],t.tex_coords[2]);
+                    Eigen::Vector3f interpolated_shadingcoords = interpolateFn(view_pos[0],view_pos[1],view_pos[2]);
+                    // if(interpolated_texcoords.x()>1||interpolated_texcoords.y()>1) std::cout << "UV: " << interpolated_texcoords.x() << interpolated_texcoords.y() << std::endl;
                     fragment_shader_payload payload( interpolated_color, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
                     payload.view_pos = interpolated_shadingcoords;
                     // Use: Instead of passing the triangle's color directly to the frame buffer, pass the color to the shaders first to get the final color;
                     auto pixel_color = fragment_shader(payload);
+                    //pixel_color*=intense;
+                    // if(pixel_color.x()>255||pixel_color.y()>255||pixel_color.z()>255) std::cout << "color:" << pixel_color.x() <<pixel_color.y() <<pixel_color.z() << std::endl;
                     Eigen::Vector2i pixel = {j,i};
-                    // Eigen::Vector3f color = {pixel_color.x(),~~pixel_color.y(),~~pixel_color.z()};
                     set_pixel(pixel,pixel_color);
                     depth_buf[ind] = zp;
                 }
