@@ -170,7 +170,7 @@ static std::tuple<float, float, float> computeBarycentric2D(float x, float y, co
     float c3 = (x*(v[0].y() - v[1].y()) + (v[1].x() - v[0].x())*y + v[0].x()*v[1].y() - v[1].x()*v[0].y()) / (v[2].x()*(v[0].y() - v[1].y()) + (v[1].x() - v[0].x())*v[2].y() + v[0].x()*v[1].y() - v[1].x()*v[0].y());
     return {c1,c2,c3};
 }
-
+// int once1 = 0;
 void rst::rasterizer::draw(std::vector<Triangle *> &TriangleList) {
 
     float f1 = (50 - 0.1) / 2.0;
@@ -235,7 +235,11 @@ void rst::rasterizer::draw(std::vector<Triangle *> &TriangleList) {
         newtri.setColor(0, 148,121.0,92.0);
         newtri.setColor(1, 148,121.0,92.0);
         newtri.setColor(2, 148,121.0,92.0);
-
+        // if(once1 == 0){
+        //     std::cout << "viewpos0" << viewspace_pos[0] << std::endl;
+        //     std::cout << "viewpos1" << newtri.normal[0] << std::endl;
+        //     once1 =1;
+        // }
         // Also pass view space vertice position
         rasterize_triangle(newtri, viewspace_pos);
     }
@@ -256,7 +260,7 @@ static Eigen::Vector2f interpolate(float alpha, float beta, float gamma, const E
 
     return Eigen::Vector2f(u, v);
 }
-
+int once2 = 0;
 //Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eigen::Vector3f, 3>& view_pos) 
 {
@@ -288,9 +292,9 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
             if(insideTriangle(j,i,t.v)){
             //if(intense>0)
                 auto [alpha, beta, gamma] = computeBarycentric2D(j+0.5, i+0.5, t.v);//计算二维重心坐标
-                float Z = 1.0 / (alpha / v[0].w() + beta / v[1].w() + gamma / v[2].w());
+                float Z = 1.0 / (alpha / v[0].z() + beta / v[1].z() + gamma / v[2].z());
                 auto interpolateFn = [=,&v](auto av,auto bv,auto cv){//通用属性插值函数
-                    return Z*(alpha*av/v[0].w()+beta*bv/v[1].w()+gamma*cv/v[2].w());
+                    return Z*(alpha*av/v[0].z()+beta*bv/v[1].z()+gamma*cv/v[2].z());
                 };
                 float zp = interpolateFn(v[0].z(),v[1].z(),v[2].z());//深度插值
                 auto ind = get_index(j,i);//  (height-1-pixel.y())*width + pixel.x();
@@ -300,6 +304,13 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t, const std::array<Eig
                     Eigen::Vector3f interpolated_normal = interpolateFn(t.normal[0],t.normal[1],t.normal[2]);
                     Eigen::Vector2f interpolated_texcoords = interpolateFn(t.tex_coords[0],t.tex_coords[1],t.tex_coords[2]);
                     Eigen::Vector3f interpolated_shadingcoords = interpolateFn(view_pos[0],view_pos[1],view_pos[2]);
+                    if(once2 == 0){
+                        std::cout << box_l<< "---"<<box_r<<std::endl;
+                        std::cout << box_b<< "---"<<box_t<<std::endl;
+                        std::cout << "插值前" << view_pos[0]<< ":"<< view_pos[1]<<":" << view_pos[2] << std::endl;
+                        std::cout << "tviewpos01" << interpolated_shadingcoords << std::endl;
+                        once2 =1;
+                    }
                     // if(interpolated_texcoords.x()>1||interpolated_texcoords.y()>1) std::cout << "UV: " << interpolated_texcoords.x() << interpolated_texcoords.y() << std::endl;
                     fragment_shader_payload payload( interpolated_color, interpolated_normal.normalized(), interpolated_texcoords, texture ? &*texture : nullptr);
                     payload.view_pos = interpolated_shadingcoords;

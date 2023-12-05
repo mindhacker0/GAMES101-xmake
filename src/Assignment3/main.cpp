@@ -84,7 +84,7 @@ struct light
     Eigen::Vector3f position;
     Eigen::Vector3f intensity;
 };
-
+int once = 0;
 Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
 {
     Eigen::Vector3f return_color = {0, 0, 0};
@@ -125,7 +125,12 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
         auto h = (view_dir+light_ident).normalized();//半程向量
         result_color+=ka.cwiseProduct(amb_light_intensity);//环境光
         result_color+=kd.cwiseProduct(light.intensity/(r*r))*std::max(0.f,float(normal.dot(light_ident)));//漫反射
-        result_color+=ks.cwiseProduct(light.intensity/(r*r))*std::pow(std::max(0.f,float(normal.dot(h))),p);//镜面反射
+        result_color+=ks.cwiseProduct(light.intensity/(r*r))*std::pow(std::max(0.f,float(normal.dot(h))),p);//
+        if(once == 0){
+            std::cout << "in:" << normal << std::endl;
+            std::cout << "in:" << normal.dot(light_ident) << std::endl;
+            once =1;
+        }
     }
 
     return result_color * 255.f;
@@ -242,6 +247,13 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
     float kh = 0.2, kn = 0.1;
 
     // TODO: Implement bump mapping here
+    Eigen::Vector3f n(normal.x(),normal.y(),normal.z());
+    Eigen::Vector3f t(n.x()*n.y()/sqrt(n.x()*n.x()+n.z()*n.z()),sqrt(n.x()*n.x()+n.z()*n.z()),n.z()*n.y()/sqrt(n.x()*n.x()+n.z()*n.z()));
+    Eigen::Vector3f b;
+    Eigen::Matrix3f TBN;
+    b = n.cross(t);
+    TBN<<t<<b<<n;
+    
     // Let n = normal = (x, y, z)
     // Vector t = (x*y/sqrt(x*x+z*z),sqrt(x*x+z*z),z*y/sqrt(x*x+z*z))
     // Vector b = n cross product t
